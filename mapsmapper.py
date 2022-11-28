@@ -83,10 +83,10 @@ class MainWindow(QMainWindow):
 
 
     def connect_DB(self):
-        self.conn = psycopg2.connect(database="paris_mapper", user="Postgres", host="localhost", password="Postgres")
+        self.conn = psycopg2.connect(database="paris_mapper", user="postgres", host="localhost", password="postgres")
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("""SELECT distinct nom_long FROM metros ORDER BY nom_long""")
+        self.cursor.execute(""f"SELECT nom  FROM network_node """)
         self.conn.commit()
         rows = self.cursor.fetchall()
 
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
         self.rows = []
 
         if _hops >= 1 :
-            self.cursor.execute(""f" SELECT distinct A.nom_long, A.res_com, B.nom_long FROM metros as A, metros as B WHERE A.nom_long = $${_fromstation}$$ AND B.nom_long = $${_tostation}$$ AND A.res_com = B.res_com""")
+            self.cursor.execute(""" SELECT distinct A.nom_long, A.res_com, B.nom_long FROM metros as A, metros as B WHERE A.nom_long = $${_fromstation}$$ AND B.nom_long = $${_tostation}$$ AND A.res_com = B.res_com""")
             self.conn.commit()
             self.rows += self.cursor.fetchall()
 
