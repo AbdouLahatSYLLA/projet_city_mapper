@@ -1,5 +1,5 @@
 #open a file for read-only purposes
-f = open("./paris/network_tram.csv", 'r')
+f = open("../paris/network_walk.csv", 'r')
 
 lineno = 0
 
@@ -33,7 +33,7 @@ for line in f:
 
         i = i + 1
     insert = insert.rstrip(",")
-    print(f"INSERT INTO network_tram VALUES({insert});")
+    print(f"INSERT INTO network_walk VALUES({insert});")
     lineno = lineno + 1
 
     #print this and wait for user to press Enter
