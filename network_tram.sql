@@ -1,4 +1,3 @@
-CREATE TABLE network_tram ( from_stop_I int,to_stop_I int,d int,duration_avg int,n_vehicles int, route_I_counts set() );
 
 INSERT INTO network_tram VALUES( '14118','14116','326','60.0','193','1054:193');
 INSERT INTO network_tram VALUES( '14119','14121','442','60.0','192','1052:192');

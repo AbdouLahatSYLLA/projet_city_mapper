@@ -1,4 +1,3 @@
-CREATE TABLE network_subway ( from_stop_I int,to_stop_I int,d int,duration_avg int,n_vehicles int, route_I_counts set() );
 
 INSERT INTO network_subway VALUES( '1','3','738','95.47826086956522','460','109:460');
 INSERT INTO network_subway VALUES( '3','1','738','123.35483870967742','465','108:465');

@@ -1,4 +1,3 @@
-CREATE TABLE network_rail ( from_stop_I int,to_stop_I int,d int,duration_avg int,n_vehicles int, route_I_counts set() );
 
 INSERT INTO network_rail VALUES( '19','371','5120','249.53271028037383','107','169:4,170:69,171:34');
 INSERT INTO network_rail VALUES( '19','261','1579','178.77551020408163','98','164:2,166:49,167:47');
