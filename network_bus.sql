@@ -1,5 +1,3 @@
-CREATE TABLE network_bus ( from_stop_I int,to_stop_I int,d int,duration_avg int,n_vehicles int, route_I_counts set() );
-
 INSERT INTO network_bus VALUES( '9820','9821','360','111.55555555555556','270','922:16,1031:154,743:100');
 INSERT INTO network_bus VALUES( '21412','21413','228','60.0','21','830:21');
 INSERT INTO network_bus VALUES( '12766','24529','364','100.13793103448276','145','930:139,918:6');
