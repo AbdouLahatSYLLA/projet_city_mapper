@@ -17,7 +17,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.resize(600, 600)
+        self.resize(800, 600)
 
         main = QWidget()
         self.setCentralWidget(main)
@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
 
 
         if _hops >= 1 :
-            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_fromstation}$$)""")
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_combined WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_fromstation}$$)""")
             dep = self.cursor.fetchall()
             #on mets dans a tous les route_I qui sont dans route_I_counts
             a =set([])
@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
             print("a")
             print(a)
             print("a+")
-            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_tostation}$$)""")
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_combined WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_tostation}$$)""")
             arv = self.cursor.fetchall()
             b =set([])
             for element in arv :
@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
                 l = [x.split(':')[0] for x in l]
                 u = set(l)
                 b.update(u)
-
+            print(b)
             # apres suppresion de v  dans  u:v on l ajoute dans une liste qui sera la listedes route_I
             c = a.intersection(b)
             #on fait l intersection de la liste des route_I de _fromstation et _tostation pour avoir la ligne qu ils ont en commun
@@ -149,14 +149,18 @@ class MainWindow(QMainWindow):
                 req += "'" + str(r) + "'"+","
 
             req =  req.rstrip(',')
+            if len(req) < 2 :
+                #si l'intersection est vide on rajoute -1 pour pas que la requete crash
+                req += "-1"
             req += ")"
+            print(req)
 
-            self.cursor.execute(""f" with mytab as (SELECT DISTINCT route_name FROM routes WHERE route_i IN {req}) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ ;""")
+            self.cursor.execute(""f" with mytab as (SELECT DISTINCT route_name FROM routes WHERE route_i IN {req}) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ """)
             self.rows = self.cursor.fetchall()
 
         self.conn.commit()
         self.rows += self.cursor.fetchall()
-        
+
 
         if len(self.rows) == 0 :
             self.tableWidget.setRowCount(0)
