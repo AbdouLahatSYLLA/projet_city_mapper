@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import *
 import ast
 
 
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -83,7 +85,7 @@ class MainWindow(QMainWindow):
 
 
     def connect_DB(self):
-        self.conn = psycopg2.connect(database="city_mapper", user="postgres", host="localhost", password="postgres")
+        self.conn = psycopg2.connect(database="city_mapper_db", user="postgres", host="localhost", password="postgres")
         self.cursor = self.conn.cursor()
 
         self.cursor.execute(""f" SELECT nom FROM network_node """)
@@ -112,37 +114,49 @@ class MainWindow(QMainWindow):
 
         self.rows = []
 
+
+
         if _hops >= 1 :
-            self.cursor.execute(""f" SELECT coordinates FROM routes WHERE route_name='A' and route_type=2 LIMIT 1 """)
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_fromstation}$$)""")
+            dep = self.cursor.fetchall()
+            #on mets dans a tous les route_I qui sont dans route_I_counts
+            a =set([])
+            for element in dep :
+                res = element[0]
+                l = res.split(',')
+                l = [x.split(':')[0] for x in l]
+                u = set(l)
+                a.update(u)
 
-            self.rows += self.cursor.fetchall()
+            print("a")
+            print(a)
+            print("a+")
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_tostation}$$)""")
+            arv = self.cursor.fetchall()
+            b =set([])
+            for element in arv :
+                res = element[0]
+                l = res.split(',')
+                l = [x.split(':')[0] for x in l]
+                u = set(l)
+                b.update(u)
 
+            # apres suppresion de v  dans  u:v on l ajoute dans une liste qui sera la listedes route_I
+            c = a.intersection(b)
+            #on fait l intersection de la liste des route_I de _fromstation et _tostation pour avoir la ligne qu ils ont en commun
+            req = "("
+            for r in c :
+                req += "'" + str(r) + "'"+","
 
-        item = self.rows[self.tableWidget.currentRow()]
-        it = str(item[0])
+            req =  req.rstrip(',')
+            req += ")"
 
-        #print(item)
-        #print("space")
-        #print(item[0][0])
-        #print(item[0][1])
-        #print(item[1][0])
-        #print(item[1][1])
+            self.cursor.execute(""f" with mytab as (SELECT DISTINCT route_name FROM routes WHERE route_i IN {req}) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ ;""")
+            self.rows = self.cursor.fetchall()
 
-
-        #lon = float(item[0][0])
-        #lat = float(item[0][1])
-        #print(lat)
-        #print(lon)
-
-        print(item[0])
-        gares = it.replace('[','(')
-        gares = gares.replace(']',')')
-        print("after replacement")
-        print(gares)
-        self.cursor.execute(""f" SELECT nom FROM network_node WHERE ((longitude,latitude) IN {gares} ) """)
         self.conn.commit()
         self.rows += self.cursor.fetchall()
-        print(self.rows[0])
+        
 
         if len(self.rows) == 0 :
             self.tableWidget.setRowCount(0)
