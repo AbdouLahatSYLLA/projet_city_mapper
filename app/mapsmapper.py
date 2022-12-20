@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         self.conn = psycopg2.connect(database="city_mapper_db", user="postgres", host="localhost", password="postgres")
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute(""f" SELECT nom FROM network_node """)
+        self.cursor.execute(""f" SELECT DISTINCT nom FROM network_node WHERE UPPER(nom) = nom """)
         self.conn.commit()
         rows = self.cursor.fetchall()
 
@@ -129,8 +129,8 @@ class MainWindow(QMainWindow):
                 a.update(u)
 
             print("a")
-            print(a)
-            print("a+")
+
+
             self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_combined WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_tostation}$$)""")
             arv = self.cursor.fetchall()
             b =set([])
@@ -141,22 +141,35 @@ class MainWindow(QMainWindow):
                 u = set(l)
                 b.update(u)
             print(b)
-            # apres suppresion de v  dans  u:v on l ajoute dans une liste qui sera la listedes route_I
-            c = a.intersection(b)
-            #on fait l intersection de la liste des route_I de _fromstation et _tostation pour avoir la ligne qu ils ont en commun
-            req = "("
+            c = b
+            list_to = "("
             for r in c :
-                req += "'" + str(r) + "'"+","
+                list_to += "'" + str(r) + "'"+","
 
-            req =  req.rstrip(',')
-            if len(req) < 2 :
+            list_to =  list_to.rstrip(',')
+            if len(list_to) < 2 :
                 #si l'intersection est vide on rajoute -1 pour pas que la requete crash
-                req += "-1"
-            req += ")"
-            print(req)
+                list_to += "-1"
+            list_to += ")"
+            print(list_to)
+            # apres suppresion de v  dans  u:v on l ajoute dans une liste qui sera la listedes route_I
+            c = a
+            #on fait l intersection de la liste des route_I de _fromstation et _tostation pour avoir la ligne qu ils ont en commun
+            list_from = "("
+            for r in c :
+                list_from += "'" + str(r) + "'"+","
 
-            self.cursor.execute(""f" with mytab as (SELECT DISTINCT route_name FROM routes WHERE route_i IN {req}) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ """)
+            list_from =  list_from.rstrip(',')
+            if len(list_from) < 2 :
+                #si l'intersection est vide on rajoute -1 pour pas que la requete crash
+                list_from += "-1"
+            list_from += ")"
+            print("a+")
+            print(list_from)
+
+            self.cursor.execute(""f" with mytab as ((SELECT DISTINCT route_name FROM routes WHERE route_i IN {list_from}) INTERSECT (SELECT DISTINCT route_name FROM routes WHERE route_i IN {list_to})) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ """)
             self.rows = self.cursor.fetchall()
+
 
         self.conn.commit()
         self.rows += self.cursor.fetchall()
