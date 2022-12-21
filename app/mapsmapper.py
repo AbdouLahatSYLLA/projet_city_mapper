@@ -169,10 +169,61 @@ class MainWindow(QMainWindow):
 
             self.cursor.execute(""f" with mytab as ((SELECT DISTINCT route_name FROM routes WHERE route_i IN {list_from}) INTERSECT (SELECT DISTINCT route_name FROM routes WHERE route_i IN {list_to})) SELECT DISTINCT A.nom,mytab.route_name,B.nom FROM mytab,network_node as A, network_node as B WHERE A.nom = $${_fromstation}$$ AND B.nom = $${_tostation}$$ """)
             self.rows = self.cursor.fetchall()
+            self.conn.commit()
+
+        if _hops >= 2:
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_combined WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_fromstation}$$)""")
+            dep = self.cursor.fetchall()
+            #on mets dans a tous les route_I qui sont dans route_I_counts
+            a =set([])
+            for element in dep :
+                res = element[0]
+                l = res.split(',')
+                l = [x.split(':')[0] for x in l]
+                u = set(l)
+                a.update(u)
+                c = a
+                depart = "("
+                for r in c :
+                    depart += "'" + str(r) + "'"+","
+
+                depart =  depart.rstrip(',')
+                if len(depart) < 2 :
+                    #si l'intersection est vide on rajoute -1 pour pas que la requete crash
+                    depart += "-1"
+                depart += ")"
+                print(depart)
+            print("a")
+            self.cursor.execute(""f"CREATE OR REPLACE VIEW depart as ( SELECT DISTINCT nom,route_name FROM routes,network_node WHERE route_i IN {depart} AND nom = $${_fromstation}$$) """)
+            self.cursor.execute(""f" SELECT * FROM depart """)
+            self.rows += self.cursor.fetchall()
+            self.cursor.execute(""f"SELECT DISTINCT route_I_counts FROM network_combined WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = $${_tostation}$$)""")
+            arv = self.cursor.fetchall()
+            b =set([])
+            for element in arv :
+                res = element[0]
+                l = res.split(',')
+                l = [x.split(':')[0] for x in l]
+                u = set(l)
+                b.update(u)
+            print(b)
+            c = b
+            arrivee = "("
+            for r in c :
+                arrivee += "'" + str(r) + "'"+","
+
+            arrivee =  arrivee.rstrip(',')
+            if len(arrivee) < 2 :
+                #si l'intersection est vide on rajoute -1 pour pas que la requete crash
+                arrivee += "-1"
+            arrivee += ")"
+            print(arrivee)
+            self.cursor.execute(""f"CREATE OR REPLACE VIEW arrivee as ( SELECT DISTINCT nom,route_name FROM routes,network_node WHERE route_i IN {arrivee} AND nom = $${_tostation}$$) """)
+            #self.cursor.execute(""f" SELECT * FROM arrivee """)
 
 
         self.conn.commit()
-        self.rows += self.cursor.fetchall()
+        #self.rows += self.cursor.fetchall()
 
 
         if len(self.rows) == 0 :

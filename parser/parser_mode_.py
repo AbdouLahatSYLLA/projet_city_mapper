@@ -1,5 +1,5 @@
 #open a file for read-only purposes
-f = open("../paris/network_walk.csv", 'r')
+f = open("../paris/network_tram.csv", 'r')
 
 lineno = 0
 
@@ -17,11 +17,15 @@ for line in f:
 
     #loop over each attribute in the array items
     insert =" "
-
     for item in items:
 
         #replace ' with '', for strings in postgreSQL
         item = item.replace("'", "''")
+        #pour supprimer la partie droite dans route_i_counts qui nous interesse pas
+        if(item == items[5]):
+            l = item.split(",")
+            l = [x.split(':')[0] for x in l]
+            item = str(l)
 
 
         #print the attribute position in array and its value (modif version)
@@ -33,7 +37,10 @@ for line in f:
 
         i = i + 1
     insert = insert.rstrip(",")
-    print(f"INSERT INTO network_walk VALUES({insert});")
+    print(f"INSERT INTO network_tram VALUES({insert});")
     lineno = lineno + 1
 
-    #print this and wait for user to press Enter
+print(f"UPDATE network_tram")
+print(f"SET route_I_counts = REPLACE(route_I_counts, ']', ')';")
+print(f"UPDATE network_tram")
+print(f"SET route_I_counts = REPLACE(route_I_counts, '[', '(';")
