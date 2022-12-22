@@ -1,5 +1,5 @@
 #open a file for read-only purposes
-f = open("../paris/network_tram.csv", 'r')
+f = open("../paris/network_combined.csv", 'r')
 
 lineno = 0
 
@@ -12,7 +12,7 @@ for line in f:
     #print the lineno variable
     #print(f"Starting printing line number {lineno}")
 
-    i = 0
+
 
 
     #loop over each attribute in the array items
@@ -21,12 +21,10 @@ for line in f:
 
         #replace ' with '', for strings in postgreSQL
         item = item.replace("'", "''")
-        #pour supprimer la partie droite dans route_i_counts qui nous interesse pas
         if(item == items[5]):
             l = item.split(",")
-            l = [x.split(':')[0] for x in l]
+            l = [int(x.split(':')[0]) for x in l]
             item = str(l)
-
 
         #print the attribute position in array and its value (modif version)
         #item = item.replace("\n", ",")
@@ -35,12 +33,12 @@ for line in f:
         insert +="'"+item+"',"
         #print(f" \'{item}\'")
 
-        i = i + 1
+
     insert = insert.rstrip(",")
-    print(f"INSERT INTO network_tram VALUES({insert});")
+    print(f"INSERT INTO network_combined VALUES({insert});")
     lineno = lineno + 1
 
-print(f"UPDATE network_tram")
-print(f"SET route_I_counts = REPLACE(route_I_counts, ']', ')';")
-print(f"UPDATE network_tram")
-print(f"SET route_I_counts = REPLACE(route_I_counts, '[', '(';")
+print(f"UPDATE network_combined")
+print(f"SET route_I_counts = REPLACE(route_I_counts, ']', ')' );")
+print(f"UPDATE network_combined")
+print(f"SET route_I_counts = REPLACE(route_I_counts, '[', '(' );")
