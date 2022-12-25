@@ -70,7 +70,7 @@ class MainWindow(QMainWindow):
         _label = QLabel('type: ', self)
         _label.setFixedSize(20,20)
         self.typ_box = QComboBox()
-        self.typ_box.addItems( ['Bus', 'Metro', 'RER', 'Tram', 'Walk','ALL'] )
+        self.typ_box.addItems( ['Bus', 'Metro', 'RER', 'Tram', 'Walk','ALL', 'RER/Metro','RER/Bus'] )
         self.typ_box.setCurrentIndex( 0 )
         controls_panel.addWidget(_label)
         controls_panel.addWidget(self.typ_box)
@@ -187,6 +187,14 @@ class MainWindow(QMainWindow):
                 self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
 
+            if _route_type == "RER/Metro":
+                print("RER/Metro")
+                self.cursor.execute(""f" SELECT DISTINCT A.nom,A.ligne,B.nom FROM noms_lignes as A, noms_lignes as B WHERE B.nom = $${_tostation}$$ and A.nom = $${_fromstation}$$ AND A.ligne = B.ligne AND A.route_type IN (1,2) AND B.route_type IN (1,2)""")
+
+            if _route_type == "RER/Bus":
+                print("RER/Bus")
+                self.cursor.execute(""f" SELECT DISTINCT A.nom,A.ligne,B.nom FROM noms_lignes as A, noms_lignes as B WHERE B.nom = $${_tostation}$$ and A.nom = $${_fromstation}$$ AND A.ligne = B.ligne AND A.route_type IN (1,3) AND B.route_type IN (1,3)""")
+
             if _route_type == "ALL":
                 print("ALL")
                 self.cursor.execute(""f" SELECT DISTINCT A.nom,A.ligne,B.nom FROM noms_lignes as A, noms_lignes as B WHERE B.nom = $${_tostation}$$ and A.nom = $${_fromstation}$$ AND A.ligne = B.ligne """)
@@ -200,10 +208,11 @@ class MainWindow(QMainWindow):
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 3 AND B.route_type = 3 AND C.route_type = 3 AND D.route_type = 3""")
             if _route_type == "Metro":
                 print("Metro")
-                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 1 AND B.route_type = 1 AND C.route_type = 1 AND D.route_type = 1""")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 2 AND B.route_type = 2 AND C.route_type = 2 AND D.route_type = 2""")
             if _route_type == "RER":
                 print("RER")
-                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 2 AND B.route_type = 2 AND C.route_type = 2 AND D.route_type = 2""")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 1 AND B.route_type = 1 AND C.route_type = 1 AND D.route_type = 1""")
+
             if _route_type == "Tram":
                 print("TRAM")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type = 0 AND B.route_type = 0 AND C.route_type = 0 AND D.route_type = 0 """)
@@ -215,14 +224,22 @@ class MainWindow(QMainWindow):
                 lat1 = float(coord1[0][0])
                 print(lat1)
                 lng1 = float(coord1[0][1])
-                self.webView.addPoint(lat1,lng1)
+                self.webView.addMarker(lat1,lng1)
                 print(lng1)
                 self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_tostation}$$ LIMIT 1 """)
                 coord2 = self.cursor.fetchall()
                 lat2 = float(coord1[0][0])
                 lng2 = float(coord1[0][1])
-                self.webView.addPoint(lat2,lng2)
+                self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+            if _route_type == "RER/Metro":
+                print("RER/Metro")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type IN (1,2) AND B.route_type IN (1,2) AND C.route_type IN (1,2) AND D.route_type IN (1,2)""")
+
+            if _route_type == "RER/Bus":
+                print("RER/Bus")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type IN (1,3) AND B.route_type IN (1,3) AND C.route_type IN (1,3) AND D.route_type IN (1,3)""")
+
             if _route_type == "ALL":
                 print("ALL")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom""")
@@ -240,6 +257,7 @@ class MainWindow(QMainWindow):
             if _route_type == "RER":
                 print("RER")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type = 1 AND B1.route_type = 1 AND B2.route_type = 1 AND C1.route_type = 1 AND C2.route_type = 1 AND D.route_type = 1""")
+
             if _route_type == "Tram":
                 print("TRAM")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type = 0 AND B1.route_type = 0 AND B2.route_type = 0 AND C1.route_type = 0 AND C2.route_type = 0 AND D.route_type = 0""")
@@ -250,13 +268,22 @@ class MainWindow(QMainWindow):
                 print(coord1)
                 lat1 = float(coord1[0][0])
                 lng1 = float(coord1[0][1])
-                self.webView.addPoint(lat1,lng1)
+                self.webView.addMarker(lat1,lng1)
                 self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_tostation}$$ LIMIT 1 """)
                 coord2 = self.cursor.fetchall()
                 lat2 = float(coord1[0][0])
                 lng2 = float(coord1[0][1])
-                self.webView.addPoint(lat2,lng2)
+                self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+
+            if _route_type == "RER/Metro":
+                print("RER/Metro")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type IN (1,2) AND B1.route_type IN (1,2) AND B2.route_type IN (1,2) AND C1.route_type IN (1,2) AND C2.route_type IN (1,2) AND D.route_type IN (1,2)""")
+
+            if _route_type == "RER/Bus":
+                print("RER/Bus")
+                self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type IN (1,3) AND B1.route_type IN (1,3) AND B2.route_type IN (1,3) AND C1.route_type IN (1,3) AND C2.route_type IN (1,3) AND D.route_type IN (1,3)""")
+
 
             if _route_type == "ALL":
                 print("ALL")
@@ -314,6 +341,14 @@ class MainWindow(QMainWindow):
                 print("RER")
                 self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
 
+            if _route_type == "RER/Metro":
+                print("RER/Metro")
+                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
+
+            if _route_type == "RER/Bus":
+                print("RER/Metro")
+                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
+
             if _route_type == "Tram":
                 print("TRAM")
                 self.cursor.execute(""f" WITH tables_tram as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 0 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_tram WHERE distance = (SELECT min(distance) FROM tables_tram)""")
@@ -338,7 +373,6 @@ class MainWindow(QMainWindow):
                 print("BUS")
                 self.cursor.execute(""f" WITH tables_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 3 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_bus WHERE distance = (SELECT min(distance) FROM tables_bus)""")
 
-
             if _route_type == "Metro":
                 print("Metro")
                 self.cursor.execute(""f" WITH tables_metro as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 1 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_metro WHERE distance = (SELECT min(distance) FROM tables_metro)""")
@@ -346,6 +380,14 @@ class MainWindow(QMainWindow):
             if _route_type == "RER":
                 print("RER")
                 self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
+
+            if _route_type == "RER/Metro":
+                print("RER/Metro")
+                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
+
+            if _route_type == "RER/Bus":
+                print("RER/Metro")
+                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
 
             if _route_type == "Tram":
                 print("TRAM")
@@ -484,7 +526,7 @@ class myWebView (QWebEngineView):
     def traceItineraire(self, lat1, lng1, lat2, lng2):
         point_a = (lat1, lng1)
         point_b = (lat2, lng2)
-        js = Template(
+        JavaScript = Template(
             """
             var directionsService = new google.maps.DirectionsService();
             var request = {
@@ -502,7 +544,7 @@ class myWebView (QWebEngineView):
             });
             """
         ).render(map=self.mymap.get_name(), latitude1=lat1, longitude1=lng1, latitude2=lat2, longitude2=lng2)
-        self.page().runJavaScript(js)
+        self.page().runJavaScript(JavaScript)
 
 
 
