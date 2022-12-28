@@ -233,26 +233,47 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
+                if(len(self.coord1) == 0):
+                    self.cursor.execute(""f" select distinct stop_i from network_node where nom = $${_fromstation}$$""")
+                    s = self.cursor.fetchall()
+                    for e in s:
+                        if self.G.has_node(int(e[0])):
+                            origin = int(e[0])
+                            break
+                else:
+                    origin = int(self.coord1[0])
 
-                origin = int(self.coord1[0])
-                print(origin)
+            print(origin)
+
+            if (len(self.coord2) == 0):
+                self.cursor.execute(""f" select distinct stop_i from network_node where nom = $${_tostation}$$""")
+                v = self.cursor.fetchall()
+                for e in v:
+                    if self.G.has_node(int(e[0])):
+                        destination = int(e[0])
+                        break
+            else:
                 destination = int(self.coord2[0])
-                print(destination)
 
-                path=nx.dijkstra_path(self.G,origin,destination)
-                print(path)
-                coordinates = []
-                for e in path:
-                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
-                    res = self.cursor.fetchall()
-                    coordinates.append([float(res[0][1]),float(res[0][0])])
-                print(coordinates)
-                dep = coordinates[0]
-                arv = coordinates[-1]
+            print(destination)
 
-                self.webView.addMarker(dep[1],dep[0])
-                self.webView.addMarker(arv[1],arv[0])
-                self.webView.traceItineraire(coordinates,self.client)
+            path=nx.dijkstra_path(self.G,origin,destination)
+            print(path)
+            coordinates = []
+            for e in path:
+                self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
+                res = self.cursor.fetchall()
+                coordinates.append([float(res[0][1]),float(res[0][0])])
+            print(coordinates)
+            dep = coordinates[0]
+            arv = coordinates[-1]
+
+            self.webView.addMarker(dep[1],dep[0])
+            self.webView.addMarker(arv[1],arv[0])
+            self.webView.traceItineraire(coordinates,self.client)
+            self.coord1 = []
+            self.coord2 = []
+
 
 
 
@@ -289,25 +310,6 @@ class MainWindow(QMainWindow):
             if _route_type == "Walk":
                 print("Walk")
 
-                origin = int(self.coord1[0])
-                print(origin)
-                destination = int(self.coord2[0])
-                print(destination)
-
-                path=nx.dijkstra_path(self.G,origin,destination)
-                print(path)
-                coordinates = []
-                for e in path:
-                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
-                    res = self.cursor.fetchall()
-                    coordinates.append([float(res[0][1]),float(res[0][0])])
-                print(coordinates)
-                dep = coordinates[0]
-                arv = coordinates[-1]
-
-                self.webView.addMarker(dep[1],dep[0])
-                self.webView.addMarker(arv[1],arv[0])
-                self.webView.traceItineraire(coordinates,self.client)
 
             if _route_type == "RER/Metro":
                 print("RER/Metro")
@@ -341,26 +343,6 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
-
-                origin = int(self.coord1[0])
-                print(origin)
-                destination = int(self.coord2[0])
-                print(destination)
-
-                path=nx.dijkstra_path(self.G,origin,destination)
-                print(path)
-                coordinates = []
-                for e in path:
-                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
-                    res = self.cursor.fetchall()
-                    coordinates.append([float(res[0][1]),float(res[0][0])])
-                print(coordinates)
-                dep = coordinates[0]
-                arv = coordinates[-1]
-
-                self.webView.addMarker(dep[1],dep[0])
-                self.webView.addMarker(arv[1],arv[0])
-                self.webView.traceItineraire(coordinates,self.client)
 
 
             if _route_type == "RER/Metro":
@@ -675,9 +657,6 @@ class myWebView (QWebEngineView):
         )
         folium.PolyLine(locations=[list(reversed(coord))
                                    for coord in route['features'][0]['geometry']['coordinates']]).add_to(self.mymap)
-
-
-        self.mymap.save('map.html')
 
         mylist = []
         for coord in route['features'][0]['geometry']['coordinates']:

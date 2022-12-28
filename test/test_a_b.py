@@ -30,8 +30,7 @@ for e in path:
     cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
     res = cursor.fetchall()
     coordinates.append([float(res[0][1]),float(res[0][0])])
-H = G.subgraph(path)
-print(H.size(weight="weight"))
+
 print(coordinates)
 #nx.draw(H, with_labels=True,font_weight='bold')
 #plt.savefig("path.png")
