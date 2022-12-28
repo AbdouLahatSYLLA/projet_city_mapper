@@ -8,10 +8,9 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import ast
-from pyroutelib3 import Router
-import osmnx as ox
 import networkx as nx
 import requests
+import openrouteservice as ors
 
 
 
@@ -19,6 +18,8 @@ class MainWindow(QMainWindow):
     count = 0
     coord1 = []
     coord2 = []
+    client = ors.Client(key='5b3ce3597851110001cf6248000fa91811364d86b89d93977ba9769c')
+    G = nx.Graph()
     def __init__(self):
         super().__init__()
 
@@ -114,6 +115,13 @@ class MainWindow(QMainWindow):
         for row in rows :
             self.from_box.addItem(str(row[0]))
             self.to_box.addItem(str(row[0]))
+
+
+        self.cursor.execute(""f" select from_stop_I,to_stop_I, d_walk  from network_walk """)
+        f = self.cursor.fetchall()
+        for line in f:
+            self.G.add_edge(int(line[0]), int(line[1]), weight = int(line[2]))
+
 
 
     def table_Click(self):
@@ -225,13 +233,26 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
-                lat1 = self.coord1[0]
-                lng1= self.coord1[1]
-                lat2 = self.coord2[0]
-                lng2 = self.coord2[1]
-                self.webView.addMarker(lat1,lng1)
-                self.webView.addMarker(lat2,lng2)
-                self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+
+                origin = int(self.coord1[0])
+                print(origin)
+                destination = int(self.coord2[0])
+                print(destination)
+
+                path=nx.dijkstra_path(self.G,origin,destination)
+                print(path)
+                coordinates = []
+                for e in path:
+                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
+                    res = self.cursor.fetchall()
+                    coordinates.append([float(res[0][1]),float(res[0][0])])
+                print(coordinates)
+                dep = coordinates[0]
+                arv = coordinates[-1]
+
+                self.webView.addMarker(dep[1],dep[0])
+                self.webView.addMarker(arv[1],arv[0])
+                self.webView.traceItineraire(coordinates,self.client)
 
 
 
@@ -267,16 +288,27 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
-                lat1 = self.coord1[0]
-                lng1= self.coord1[1]
-                lat2 = self.coord2[0]
-                lng2 = self.coord2[1]
-                self.webView.addMarker(lat1,lng1)
-                self.webView.addMarker(lat2,lng2)
-                self.webView.traceItineraire(lat1,lng1,lat2,lng2)
 
-                # Add the walking route to the map
-                folium.PolyLine(coordinates, color="red", weight=2, opacity=1).add_to(self.mymap)
+                origin = int(self.coord1[0])
+                print(origin)
+                destination = int(self.coord2[0])
+                print(destination)
+
+                path=nx.dijkstra_path(self.G,origin,destination)
+                print(path)
+                coordinates = []
+                for e in path:
+                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
+                    res = self.cursor.fetchall()
+                    coordinates.append([float(res[0][1]),float(res[0][0])])
+                print(coordinates)
+                dep = coordinates[0]
+                arv = coordinates[-1]
+
+                self.webView.addMarker(dep[1],dep[0])
+                self.webView.addMarker(arv[1],arv[0])
+                self.webView.traceItineraire(coordinates,self.client)
+
             if _route_type == "RER/Metro":
                 print("RER/Metro")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type IN (1,2) AND B.route_type IN (1,2) AND C.route_type IN (1,2) AND D.route_type IN (1,2)""")
@@ -306,16 +338,30 @@ class MainWindow(QMainWindow):
             if _route_type == "Tram":
                 print("TRAM")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type = 0 AND B1.route_type = 0 AND B2.route_type = 0 AND C1.route_type = 0 AND C2.route_type = 0 AND D.route_type = 0""")
+
             if _route_type == "Walk":
                 print("Walk")
 
-                lat1 = self.coord1[0]
-                lng1= self.coord1[1]
-                lat2 = self.coord2[0]
-                lng2 = self.coord2[1]
-                self.webView.addMarker(lat1,lng1)
-                self.webView.addMarker(lat2,lng2)
-                self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+                origin = int(self.coord1[0])
+                print(origin)
+                destination = int(self.coord2[0])
+                print(destination)
+
+                path=nx.dijkstra_path(self.G,origin,destination)
+                print(path)
+                coordinates = []
+                for e in path:
+                    self.cursor.execute(""f" select distinct latitude,longitude from network_node where stop_i = {e}""")
+                    res = self.cursor.fetchall()
+                    coordinates.append([float(res[0][1]),float(res[0][0])])
+                print(coordinates)
+                dep = coordinates[0]
+                arv = coordinates[-1]
+
+                self.webView.addMarker(dep[1],dep[0])
+                self.webView.addMarker(arv[1],arv[0])
+                self.webView.traceItineraire(coordinates,self.client)
+
 
             if _route_type == "RER/Metro":
                 print("RER/Metro")
@@ -369,46 +415,46 @@ class MainWindow(QMainWindow):
 
         if (self.count % 2 == 0):
             self.webView.addPoint(lat, lng)
-            self.coord1.insert(0,lat)
-            self.coord1.insert(1,lng)
             _route_type = str(self.typ_box.currentText())
             if _route_type == "Bus":
                 print("BUS")
-                self.cursor.execute(""f" WITH tables_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 3 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_bus WHERE distance = (SELECT min(distance) FROM tables_bus)""")
+                self.cursor.execute(""f" WITH tables_bus as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 3 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_bus WHERE distance = (SELECT min(distance) FROM tables_bus)""")
 
             if _route_type == "Metro":
                 print("Metro")
-                self.cursor.execute(""f" WITH tables_metro as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 1 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_metro WHERE distance = (SELECT min(distance) FROM tables_metro)""")
+                self.cursor.execute(""f" WITH tables_metro as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 1 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_metro WHERE distance = (SELECT min(distance) FROM tables_metro)""")
 
             if _route_type == "RER":
                 print("RER")
-                self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
+                self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
 
             if _route_type == "RER/Metro":
                 print("RER/Metro")
-                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
+                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
 
             if _route_type == "RER/Bus":
                 print("RER/Metro")
-                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
+                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
 
             if _route_type == "Tram":
                 print("TRAM")
-                self.cursor.execute(""f" WITH tables_tram as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 0 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_tram WHERE distance = (SELECT min(distance) FROM tables_tram)""")
+                self.cursor.execute(""f" WITH tables_tram as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 0 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_tram WHERE distance = (SELECT min(distance) FROM tables_tram)""")
 
             if _route_type == "Walk":
                 print("Walk")
-                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+                self.cursor.execute(""f" WITH montab as (SELECT nom,stop_i, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type IN  (0,1,2,3)) GROUP BY nom,stop_i,lat1,lng1,distance) SELECT montab.nom,montab.stop_i FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+
 
             if _route_type == "ALL":
                 print("ALL")
-                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+                self.cursor.execute(""f" WITH montab as (SELECT nom,stop_i, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
 
 
             print(f"1st-Clicked  on : latitude {lat}, longitude {lng}")
             self.conn.commit()
             myrows = self.cursor.fetchall()
             index = 0
+            self.coord1.insert(0,float(myrows[0][1]))
             self.from_box.setCurrentIndex(self.from_box.findText(myrows[index][0], Qt.MatchFixedString))
             self.count = self.count + 1
         else:
@@ -416,42 +462,46 @@ class MainWindow(QMainWindow):
             _route_type = str(self.typ_box.currentText())
             if _route_type == "Bus":
                 print("BUS")
-                self.cursor.execute(""f" WITH tables_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 3 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_bus WHERE distance = (SELECT min(distance) FROM tables_bus)""")
+                self.cursor.execute(""f" WITH tables_bus as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 3 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_bus WHERE distance = (SELECT min(distance) FROM tables_bus)""")
 
             if _route_type == "Metro":
                 print("Metro")
-                self.cursor.execute(""f" WITH tables_metro as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 1 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_metro WHERE distance = (SELECT min(distance) FROM tables_metro)""")
+                self.cursor.execute(""f" WITH tables_metro as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 1 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_metro WHERE distance = (SELECT min(distance) FROM tables_metro)""")
 
             if _route_type == "RER":
                 print("RER")
-                self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
+                self.cursor.execute(""f" WITH tables_rer as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 2 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer WHERE distance = (SELECT min(distance) FROM tables_rer)""")
 
             if _route_type == "RER/Metro":
                 print("RER/Metro")
-                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
+                self.cursor.execute(""f" WITH tables_rer_met as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,2) and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer_met WHERE distance = (SELECT min(distance) FROM tables_rer_met)""")
 
             if _route_type == "RER/Bus":
                 print("RER/Metro")
-                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
+                self.cursor.execute(""f" WITH tables_rer_bus as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type IN (1,3) and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_rer_bus WHERE distance = (SELECT min(distance) FROM tables_rer_bus)""")
 
             if _route_type == "Tram":
                 print("TRAM")
-                self.cursor.execute(""f" WITH tables_tram as (SELECT distinct noms_lignes.nom as nom, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 0 and noms_lignes.nom = network_node.nom ) SELECT nom FROM tables_tram WHERE distance = (SELECT min(distance) FROM tables_tram)""")
+                self.cursor.execute(""f" WITH tables_tram as (SELECT distinct noms_lignes.nom as nom,stop_i, CAST(latitude as FLOAT) as lat , CAST(longitude as FLOAT) as lng,(ABS( CAST(latitude as FLOAT)  - {lat} ) + ABS( CAST(longitude as FLOAT) - {lng}))  as distance  FROM noms_lignes,network_node WHERE route_type = 0 and noms_lignes.nom = network_node.nom ) SELECT nom,stop_i FROM tables_tram WHERE distance = (SELECT min(distance) FROM tables_tram)""")
 
             if _route_type == "Walk":
                 print("Walk")
-                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+                self.cursor.execute(""f" WITH montab as (SELECT nom,stop_i, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type IN  (0,1,2,3)) GROUP BY nom,stop_i,lat1,lng1,distance) SELECT montab.nom,montab.stop_i FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+
 
             if _route_type == "ALL":
                 print("ALL")
-                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
-            self.coord2.insert(0,lat)
-            self.coord2.insert(1,lng)
+                self.cursor.execute(""f" WITH montab as (SELECT nom,stop_i, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+
+
+            print(f"1st-Clicked  on : latitude {lat}, longitude {lng}")
             self.conn.commit()
             myrows = self.cursor.fetchall()
             index = 0
+            self.coord2.insert(0,float(myrows[0][1]))
             self.to_box.setCurrentIndex(self.to_box.findText(myrows[index][0], Qt.MatchFixedString))
             self.count = self.count + 1
+
 
 
 class myWebView (QWebEngineView):
@@ -504,7 +554,7 @@ class myWebView (QWebEngineView):
         """
         L.polyline(
             {{list}}, {
-                "color": "#424949",
+                "color": "#566573",
                 "opacity": 1.0,
                 "weight": 4,
                 "line_cap": "butt"
@@ -615,15 +665,24 @@ class myWebView (QWebEngineView):
     def clearMap(self, index):
         self.setMap(index)
 
-    def traceItineraire(self, lat1, lng1, lat2, lng2):
-        location_point = (lat1,lng1)
-        G = ox.graph_from_point(location_point, dist=500, simplify=True)
-        origin_node = list(G.nodes())[0]
-        destination_node = list(G.nodes())[-1]
-        route = nx.shortest_path(G, origin_node, destination_node)
-        print(route)
-        self.mymap = ox.plot_route_folium(G, route,self.mymap, weight=10)
-        self.mymap.save('map1.html')
+    def traceItineraire(self,coordinates,client):
+        route = client.directions(
+            coordinates=coordinates,
+            profile='foot-walking',
+            format='geojson',
+            options={"avoid_features": ["steps"]},
+            validate=False,
+        )
+        folium.PolyLine(locations=[list(reversed(coord))
+                                   for coord in route['features'][0]['geometry']['coordinates']]).add_to(self.mymap)
+
+
+        self.mymap.save('map.html')
+
+        mylist = []
+        for coord in route['features'][0]['geometry']['coordinates']:
+            mylist.append(list(reversed(coord)))
+        self.addRoute(mylist)
 
 
 
