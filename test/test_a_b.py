@@ -1,43 +1,24 @@
-import psycopg2 
+import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import write_dot
 
-def route_I_counts_to_list(s) :
-    l = s.split(',') 
-    l = [x.split(':')[0] for x in l]  
-    return set(l)
+with open('network_walk.csv', 'r') as f:
 
-conn = psycopg2.connect(database="citymapper", user="danii", host="localhost", password="danii") 
-cursor = conn.cursor() 
-cursor.execute("""SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = 'Nation')""") 
-dep = cursor.fetchall() 
-a =set([])
-for element in dep :
-    print(element[0])
-    a.update(route_I_counts_to_list(element[0]))
+    next(f)
+    G = nx.Graph()
+    for line in f:
+        items = line.rstrip("\n").split(";")
+        for item in items:
 
-print("a")
-print(a)
-print("a")
-cursor.execute("""SELECT DISTINCT route_I_counts FROM network_rail WHERE from_stop_i IN ( SELECT stop_i FROM network_node WHERE nom = 'Nanterre-Préfecture')""") 
-arv = cursor.fetchall() 
-b =set([])
-for element in arv :
-    print(element[0])
-    b.update(route_I_counts_to_list(element[0]))
+            #replace ' with '', for strings in postgreSQL
+            item = item.replace("'", "''")
+            if item == items[0]:
+                G.add_node(int(item))
+            if item == items[1] :
+                G.add_node(int(item))
+                G.add_edge(items[0], items[1], weight = items[3])
 
-print("b")
-print(b)
-print("b")
-c = a.intersection(b)
-req = "("
-for r in c :
-    req += "'" + str(r) + "'"+","
-
-req =  req.rstrip(',')
-req += ")"
-print(req)
-cursor.execute(""f"SELECT DISTINCT route_name FROM routes WHERE route_i IN {req}""") 
-dep = cursor.fetchall() 
-print(dep)
-#print(route_I_counts_to_list(depart[0][1]))
-
-
+#print(list(nx.connected_components(G)))
+pos = nx.nx_agraph.graphviz_layout(G)
+nx.draw(G, pos=pos)
+write_dot(G, 'file.dot')

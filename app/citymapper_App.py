@@ -8,12 +8,17 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import ast
-
+from pyroutelib3 import Router
+import osmnx as ox
+import networkx as nx
+import requests
 
 
 
 class MainWindow(QMainWindow):
     count = 0
+    coord1 = []
+    coord2 = []
     def __init__(self):
         super().__init__()
 
@@ -63,7 +68,7 @@ class MainWindow(QMainWindow):
         _label.setFixedSize(20,20)
         self.hop_box = QComboBox()
         self.hop_box.addItems( ['1', '2', '3', '4', '5'] )
-        self.hop_box.setCurrentIndex( 0 )
+        self.hop_box.setCurrentIndex( 2 )
         controls_panel.addWidget(_label)
         controls_panel.addWidget(self.hop_box)
 
@@ -71,7 +76,7 @@ class MainWindow(QMainWindow):
         _label.setFixedSize(20,20)
         self.typ_box = QComboBox()
         self.typ_box.addItems( ['Bus', 'Metro', 'RER', 'Tram', 'Walk','ALL', 'RER/Metro','RER/Bus'] )
-        self.typ_box.setCurrentIndex( 0 )
+        self.typ_box.setCurrentIndex( 2 )
         controls_panel.addWidget(_label)
         controls_panel.addWidget(self.typ_box)
 
@@ -113,35 +118,83 @@ class MainWindow(QMainWindow):
 
     def table_Click(self):
         print("Row number double-clicked: ", self.tableWidget.currentRow())
-        i = 0
-        listseg = []
-        for col in self.rows[self.tableWidget.currentRow()] :
-            chaine = str(col)
-            #reste à recuperer lat et lng ensuite continuer ... :)
-            print(f"{i} column value is: {chaine}")
-            self.cursor.execute(""f"SELECT distinct latitude,longitude FROM network_node WHERE nom = $${chaine}$$ """)
+        list_coord = []
+        ligne = self.rows[self.tableWidget.currentRow()]
+        i = 1
+        while i < len(ligne) :
+            stops_list = []
+            #Ligne entre les 2 stations
+            route_name = str(ligne[i])
+            self.cursor.execute(""f"SELECT  liste_arrets,route_i FROM routes WHERE route_name = '{route_name}' """)
+            r = self.cursor.fetchall()
+            #Station de départ
+            depart = str(ligne[i-1])
+            self.cursor.execute(""f"SELECT distinct stop_i FROM network_node WHERE nom = $${depart}$$ """)
+            dep = self.cursor.fetchall()
+            d = []
+            for e in dep:
+                d.append(int(e[0]))
+            #Station d'arrivée
+            arrivee = str(ligne[i+1])
+            self.cursor.execute(""f"SELECT distinct stop_i FROM network_node WHERE nom = $${arrivee}$$ """)
+            arv = self.cursor.fetchall()
+            ar = []
+            for e in arv:
+                ar.append(int(e[0]))
+            ok = 0
+            for element in r:
+                if(ok > 0):
+                    break
+                re = element[0]
+                res = re.strip('][').split(', ')
+                res = list(map(int,res))
+                for e in d:
+                    if(ok > 0):
+                        break
+                    for f in ar:
+                        if e in res and f in res:
+                            #Trouvé
+                            a = res.index(int(e))
+                            b = res.index(int(f))
+                            if a > b :
+                                res = res[b:a+1]
+                                ok =  1
+                                break
+                            else:
+                                res = res[a:b+1]
+                                ok = 1
+                                break
+            for e in res:
+                self.cursor.execute(""f"SELECT latitude,longitude FROM network_node WHERE stop_i = '{e}' """)
+                r = self.cursor.fetchall()
+                stops_list.append([float(r[0][0]),float(r[0][1])])
 
-            self.conn.commit()
-            mylist = self.cursor.fetchall()
-            if(mylist != []):
-                item = mylist.pop(0)
-                lat = item[0]
-                lng = item[1]
+            for elt in stops_list :
+                list_coord.append(elt)
+            self.webView.addRoute(stops_list)#Ajouter un argument color :)
 
-                listseg.insert(0,lng)
-                listseg.insert(0,lat)
-                self.webView.addMarker(lat,lng)
+            i = i + 2
 
-        lng1 = listseg.pop(-1)
-        lat1 = listseg.pop(-1)
-        while(listseg != []):
-            print(lat1)
-            print(lng1)
-            self.webView.addSegment(lat1,lng1,listseg[-2],listseg[-1])
-            lng1 = listseg.pop(-1)
-            lat1 = listseg.pop(-1)
+        #Sans le point de départ et d'arrivée
+
+        chemin = list_coord[1:len(list_coord)-1]
+        point_d = list_coord[0]
+        point_f = list_coord[-1]
+
+
+
+        col = "#B03A2E"
+        msg = "Partez de là"
+        m = msg + " " + route_name
+        print(m)
+        print(route_name)
+        self.webView.addCol(float(point_d[0]),float(point_d[1]),col,msg) #Argument color plz
+        msg = "Descendez Ici"
+        self.webView.addCol(float(point_f[0]),float(point_f[1]),col,msg) #Argument color plz
+
+        for e in chemin :
+            self.webView.addMarker(float(e[0]),float(e[1])) #Arg color
         return i
-
 
 
     def button_Go(self):
@@ -172,20 +225,15 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_fromstation}$$ LIMIT 1 """)
-                coord1 = self.cursor.fetchall()
-                lng1 = float(coord1[0][0])
-
-                lat1 = float(coord1[0][1])
+                lat1 = self.coord1[0]
+                lng1= self.coord1[1]
+                lat2 = self.coord2[0]
+                lng2 = self.coord2[1]
                 self.webView.addMarker(lat1,lng1)
-
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_tostation}$$ LIMIT 1 """)
-                coord2 = self.cursor.fetchall()
-
-                lng2 = float(coord1[0][0])
-                lat2 = float(coord1[0][1])
                 self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+
+
 
             if _route_type == "RER/Metro":
                 print("RER/Metro")
@@ -219,19 +267,16 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_fromstation}$$ LIMIT 1 """)
-                coord1 = self.cursor.fetchall()
-                lat1 = float(coord1[0][0])
-                print(lat1)
-                lng1 = float(coord1[0][1])
+                lat1 = self.coord1[0]
+                lng1= self.coord1[1]
+                lat2 = self.coord2[0]
+                lng2 = self.coord2[1]
                 self.webView.addMarker(lat1,lng1)
-                print(lng1)
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_tostation}$$ LIMIT 1 """)
-                coord2 = self.cursor.fetchall()
-                lat2 = float(coord1[0][0])
-                lng2 = float(coord1[0][1])
                 self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
+
+                # Add the walking route to the map
+                folium.PolyLine(coordinates, color="red", weight=2, opacity=1).add_to(self.mymap)
             if _route_type == "RER/Metro":
                 print("RER/Metro")
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B.nom, C.ligne,  D.nom FROM noms_lignes as A, noms_lignes as B, noms_lignes as C, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND D.nom = $${_tostation}$$ AND A.ligne = B.ligne AND B.nom = C.nom AND C.ligne = D.ligne AND A.ligne <> C.ligne AND A.nom <> B.nom AND B.nom <> D.nom AND A.route_type IN (1,2) AND B.route_type IN (1,2) AND C.route_type IN (1,2) AND D.route_type IN (1,2)""")
@@ -263,16 +308,12 @@ class MainWindow(QMainWindow):
                 self.cursor.execute(""f" SELECT distinct A.nom, A.ligne, B2.nom, B2.ligne, C2.nom, C2.ligne, D.nom FROM noms_lignes as A, noms_lignes as B1, noms_lignes as B2, noms_lignes as C1, noms_lignes as C2, noms_lignes as D WHERE A.nom = $${_fromstation}$$ AND A.ligne = B1.ligne AND B1.nom = B2.nom AND B2.ligne = C1.ligne AND C1.nom = C2.nom AND C2.ligne = D.ligne AND D.nom = $${_tostation}$$ AND A.ligne <> B2.ligne AND B2.ligne <> C2.ligne AND A.ligne <> C2.ligne AND A.nom <> B1.nom AND B2.nom <> C1.nom AND C2.nom <> D.nom AND A.route_type = 0 AND B1.route_type = 0 AND B2.route_type = 0 AND C1.route_type = 0 AND C2.route_type = 0 AND D.route_type = 0""")
             if _route_type == "Walk":
                 print("Walk")
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_fromstation}$$ LIMIT 1 """)
-                coord1 = self.cursor.fetchall()
-                print(coord1)
-                lat1 = float(coord1[0][0])
-                lng1 = float(coord1[0][1])
+
+                lat1 = self.coord1[0]
+                lng1= self.coord1[1]
+                lat2 = self.coord2[0]
+                lng2 = self.coord2[1]
                 self.webView.addMarker(lat1,lng1)
-                self.cursor.execute(""f" SELECT latitude,longitude FROM network_node WHERE nom = $${_tostation}$$ LIMIT 1 """)
-                coord2 = self.cursor.fetchall()
-                lat2 = float(coord1[0][0])
-                lng2 = float(coord1[0][1])
                 self.webView.addMarker(lat2,lng2)
                 self.webView.traceItineraire(lat1,lng1,lat2,lng2)
 
@@ -328,6 +369,8 @@ class MainWindow(QMainWindow):
 
         if (self.count % 2 == 0):
             self.webView.addPoint(lat, lng)
+            self.coord1.insert(0,lat)
+            self.coord1.insert(1,lng)
             _route_type = str(self.typ_box.currentText())
             if _route_type == "Bus":
                 print("BUS")
@@ -355,6 +398,8 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
+                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+
             if _route_type == "ALL":
                 print("ALL")
                 self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
@@ -395,10 +440,13 @@ class MainWindow(QMainWindow):
 
             if _route_type == "Walk":
                 print("Walk")
+                self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
+
             if _route_type == "ALL":
                 print("ALL")
                 self.cursor.execute(""f" WITH montab as (SELECT nom, CAST( latitude as FLOAT) as lat1 , CAST(longitude as FLOAT) as lng1,(ABS(CAST( latitude as FLOAT) - {lat} ) + ABS( CAST( longitude as FLOAT) - {lng})) as distance FROM network_node WHERE nom IN (SELECT nom from noms_lignes WHERE route_type = 1) GROUP BY nom,lat1,lng1,distance) SELECT montab.nom FROM montab WHERE montab.distance = (SELECT min(montab.distance) FROM montab)""")
-
+            self.coord2.insert(0,lat)
+            self.coord2.insert(1,lng)
             self.conn.commit()
             myrows = self.cursor.fetchall()
             index = 0
@@ -451,20 +499,64 @@ class myWebView (QWebEngineView):
 
         self.page().runJavaScript(js)
 
+    def addRoute(self,list):
+        js = Template(
+        """
+        L.polyline(
+            {{list}}, {
+                "color": "#424949",
+                "opacity": 1.0,
+                "weight": 4,
+                "line_cap": "butt"
+            }
+        ).addTo({{map}});
+        """
+        ).render(map=self.mymap.get_name(), list = list )
+
+        self.page().runJavaScript(js)
+
+
+    def addCol(self,lat,lng,col,msg):
+        js = Template(
+        """
+        L.marker([{{latitude}}, {{longitude}}], {icon: L.AwesomeMarkers.icon({icon: 'spinner', prefix: 'fa', markerColor: 'red', spin:true}) }).addTo({{map}}).bindPopup('{{msg}}').openPopup();
+        L.circleMarker(
+            [{{latitude}}, {{longitude}}], {
+                "bubblingMouseEvents": true,
+                "color": '{{col}}',
+                "popup": "{{msg}}",
+                "dashArray": null,
+                "dashOffset": null,
+                "fill": false,
+                "fillColor": '{{col}}',
+                "fillOpacity": 0.2,
+                "fillRule": "evenodd",
+                "lineCap": "round",
+                "lineJoin": "round",
+                "opacity": 1.0,
+                "radius": 2,
+                "stroke": true,
+                "weight": 5
+            }
+        ).addTo({{map}});
+        """
+        ).render(map=self.mymap.get_name(), latitude=lat, longitude=lng,col = "#B03A2E",msg = msg)
+        self.page().runJavaScript(js)
+
 
     def addMarker(self, lat, lng):
         js = Template(
         """
-        L.marker([{{latitude}}, {{longitude}}] ).addTo({{map}});
+         L.marker([{{latitude}},{{longitude}}], {icon: L.AwesomeMarkers.icon({icon: 'info', prefix: 'fa', markerColor: 'cadetblue'}) }).addTo({{map}});
         L.circleMarker(
             [{{latitude}}, {{longitude}}], {
                 "bubblingMouseEvents": true,
-                "color": "#3388ff",
+                "color": "#17202A",
                 "popup": "hello",
                 "dashArray": null,
                 "dashOffset": null,
                 "fill": false,
-                "fillColor": "#3388ff",
+                "fillColor": "#17202A",
                 "fillOpacity": 0.2,
                 "fillRule": "evenodd",
                 "lineCap": "round",
@@ -524,27 +616,16 @@ class myWebView (QWebEngineView):
         self.setMap(index)
 
     def traceItineraire(self, lat1, lng1, lat2, lng2):
-        point_a = (lat1, lng1)
-        point_b = (lat2, lng2)
-        JavaScript = Template(
-            """
-            var directionsService = new google.maps.DirectionsService();
-            var request = {
-                origin: new google.maps.LatLng({point_a[0]}, {point_a[1]}),
-                destination: new google.maps.LatLng({point_b[0]}, {point_b[1]}),
-                travelMode: google.maps.TravelMode.WALKING
-            };
-            directionsService.route(request, function(response, status) {
-                if (status == google.maps.DirectionsStatus.OK) {
-                    new google.maps.DirectionsRenderer({
-                    map: map,
-                    directions: response
-                    });
-                }
-            });
-            """
-        ).render(map=self.mymap.get_name(), latitude1=lat1, longitude1=lng1, latitude2=lat2, longitude2=lng2)
-        self.page().runJavaScript(JavaScript)
+        location_point = (lat1,lng1)
+        G = ox.graph_from_point(location_point, dist=500, simplify=True)
+        origin_node = list(G.nodes())[0]
+        destination_node = list(G.nodes())[-1]
+        route = nx.shortest_path(G, origin_node, destination_node)
+        print(route)
+        self.mymap = ox.plot_route_folium(G, route,self.mymap, weight=10)
+        self.mymap.save('map1.html')
+
+
 
 
 
