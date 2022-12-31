@@ -1,4 +1,4 @@
-CREATE TABLE noms_lignes(nom TEXT,ligne TEXT,route_type NUMERIC(1),PRIMARY KEY(nom,ligne,route_type));
+/* AUTEUR:  ABDOU LAHAT SYLLA 12011836, MURSAL ZUHAIR 12008351 */
 INSERT into noms_lignes VALUES( 'GARE DE ST DENIS RER','T1','0');
 INSERT into noms_lignes VALUES( 'GASTON ROULAUD','T1','0');
 INSERT into noms_lignes VALUES( 'L''ILE SAINT DENIS','T1','0');
